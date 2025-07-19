@@ -3,195 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Chimera - AI Idea Synthesizer</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <title>Project Singularity by Koushiq Murad</title>
     <style>
-        body {
-            font-family: 'Orbitron', sans-serif;
-            background-color: #0a0a0a;
-            color: #00ffcc;
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            cursor: none;
         }
-        .container {
-            border: 1px solid #00ffcc;
-            box-shadow: 0 0 20px #00ffcc, 0 0 30px #00ffcc inset;
+        canvas {
+            display: block;
         }
-        .prompt-input {
-            background-color: rgba(0, 255, 204, 0.05);
-            border: 1px solid #00ffcc;
-            box-shadow: 0 0 10px #00ffcc inset;
-            color: #ffffff;
-            transition: all 0.3s ease;
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: rgba(0, 255, 75, 0.8);
+            font-family: 'Courier New', Courier, monospace;
+            text-align: center;
+            pointer-events: none;
+            text-shadow: 0 0 10px rgba(0, 255, 75, 0.8);
         }
-        .prompt-input:focus {
-            outline: none;
-            box-shadow: 0 0 15px #00ffcc;
+        .overlay h1 {
+            font-size: 4vw;
+            margin: 0;
+            letter-spacing: 0.2em;
+            animation: fadeIn 3s ease-in-out;
+            transition: all 0.2s ease;
+            pointer-events: auto; /* Allow hover on title */
         }
-        .synth-button {
-            background-color: #00ffcc;
-            color: #0a0a0a;
-            border: none;
-            box-shadow: 0 0 15px #00ffcc;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 2px;
+        .overlay h1:hover {
+            color: #fff;
+            text-shadow: 0 0 20px #fff;
+            transform: scale(1.05);
         }
-        .synth-button:hover {
-            background-color: #ffffff;
-            color: #0a0a0a;
-            box-shadow: 0 0 25px #ffffff;
+        .overlay p {
+            font-size: 1.5vw;
+            margin-top: 10px;
+            animation: fadeIn 4s ease-in-out;
         }
-        .synth-button:disabled {
-            background-color: #333;
-            color: #777;
-            box-shadow: none;
-            cursor: not-allowed;
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            color: rgba(0, 255, 75, 0.6);
+            font-family: 'Courier New', Courier, monospace;
+            text-align: center;
+            font-size: 1vw;
+            animation: fadeIn 5s ease-in-out;
+            pointer-events: none;
         }
-        .result-container {
-            border: 1px solid #00ffcc;
-            box-shadow: 0 0 15px #00ffcc inset;
-            min-height: 300px;
-            background-color: rgba(0, 255, 204, 0.02);
-            white-space: pre-wrap; /* This will respect newlines in the AI's response */
-            text-align: left;
-        }
-        .loader {
-            border: 8px solid rgba(0, 255, 204, 0.2);
-            border-top: 8px solid #00ffcc;
-            border-radius: 50%;
-            width: 80px;
-            height: 80px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .placeholder-text {
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-4">
-
-    <div class="container w-full max-w-2xl p-6 md:p-8 rounded-lg bg-black bg-opacity-50 backdrop-blur-sm">
-        <header class="text-center mb-6">
-            <h1 class="text-3xl md:text-4xl font-bold tracking-widest">PROJECT CHIMERA</h1>
-            <p class="text-sm text-gray-400 tracking-wider">AI Idea Synthesizer by Koushiq Murad</p>
-        </header>
-
-        <main>
-            <div class="mb-6">
-                <textarea id="promptInput" class="prompt-input w-full p-4 rounded-md text-lg" rows="3" placeholder="Describe your idea or story..."></textarea>
-            </div>
-            <div class="mb-6">
-                <button id="synthButton" class="synth-button w-full py-4 rounded-md font-bold">
-                    Synthesize
-                </button>
-            </div>
-
-            <div id="resultContainer" class="result-container w-full rounded-lg flex items-center justify-center overflow-auto p-4">
-                <div id="placeholder" class="text-center">
-                    <div class="text-6xl mb-4">💡</div>
-                    <p class="placeholder-text text-gray-500">Your idea will materialize here</p>
-                </div>
-                <div id="loader" class="loader hidden"></div>
-                <p id="resultText" class="w-full h-full object-contain hidden"></p>
-            </div>
-             <p id="errorMessage" class="text-red-500 text-center mt-4 hidden"></p>
-        </main>
+<body>
+    <canvas id="matrixCanvas"></canvas>
+    <div class="overlay">
+        <h1>PROJECT SINGULARITY</h1>
+        <p>by Koushiq Murad</p>
+    </div>
+    <div class="instructions">
+        Move your mouse to bend the stream. Click to create a shockwave.
     </div>
 
     <script>
-        const promptInput = document.getElementById('promptInput');
-        const synthButton = document.getElementById('synthButton');
-        const resultContainer = document.getElementById('resultContainer');
-        const placeholder = document.getElementById('placeholder');
-        const loader = document.getElementById('loader');
-        const resultText = document.getElementById('resultText');
-        const errorMessage = document.getElementById('errorMessage');
+        const canvas = document.getElementById('matrixCanvas');
+        const ctx = canvas.getContext('2d');
 
-        synthButton.addEventListener('click', synthesizeText);
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
+        const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const nums = '0123456789';
+        const binary = '01';
+        const alphabet = katakana + latin + nums + binary;
+
+        const fontSize = 16;
+        let columns = Math.floor(width / fontSize);
+
+        let rainDrops = [];
+        for (let x = 0; x < columns; x++) {
+            rainDrops[x] = 1;
+        }
+
+        let mouse = { x: width / 2, y: height / 2 };
+        const mouseInfluence = 150;
         
-        async function synthesizeText() {
-            const userPrompt = promptInput.value.trim();
-            if (!userPrompt) {
-                showError("Please enter a description for your idea.");
-                return;
-            }
+        let shockwaves = [];
 
-            setLoading(true);
-            
-            try {
-                // --- API Call to Gemini for Text Generation ---
-                let chatHistory = [{ role: "user", parts: [{ text: userPrompt }] }];
-                const payload = { contents: chatHistory };
-                const apiKey = "AIzaSyD9enH9UavV9Yf8sqbLQkS1-mhRP9rCyqk";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            columns = Math.floor(width / fontSize);
+            rainDrops = [];
+            for (let x = 0; x < columns; x++) {
+                rainDrops[x] = 1;
+            }
+        });
+        
+        window.addEventListener('mousemove', (event) => {
+            mouse.x = event.clientX;
+            mouse.y = event.clientY;
+        });
+
+        window.addEventListener('click', (event) => {
+            shockwaves.push({ x: event.clientX, y: event.clientY, radius: 0, maxRadius: 300, life: 1 });
+        });
+
+        const draw = () => {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < rainDrops.length; i++) {
+                const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
                 
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                let posX = i * fontSize;
+                let posY = rainDrops[i] * fontSize;
+
+                let finalColor = '#0F0'; // Default green
+                let isHighlighted = false;
+
+                // Check mouse distance
+                const dxMouse = posX - mouse.x;
+                const dyMouse = posY - mouse.y;
+                const distanceMouse = Math.sqrt(dxMouse * dxMouse + dyMouse * dyMouse);
+
+                if (distanceMouse < mouseInfluence) {
+                    const force = (mouseInfluence - distanceMouse) / mouseInfluence;
+                    posX += dxMouse * force * 0.3;
+                    posY += dyMouse * force * 0.3;
+                    finalColor = '#FFF';
+                    isHighlighted = true;
+                }
+
+                // Check shockwave distance
+                shockwaves.forEach(wave => {
+                    const dxWave = posX - wave.x;
+                    const dyWave = posY - wave.y;
+                    const distanceWave = Math.sqrt(dxWave * dxWave + dyWave * dyWave);
+                    if (Math.abs(distanceWave - wave.radius) < 20) {
+                        finalColor = '#00BFFF'; // Shockwave color
+                        isHighlighted = true;
+                    }
                 });
-
-                const responseData = await response.json();
-
-                if (!response.ok) {
-                    const errorMsg = responseData.error?.message || `HTTP error! Status: ${response.status}`;
-                    throw new Error(errorMsg);
+                
+                // First character highlight
+                if (rainDrops[i] * fontSize < fontSize * 2) {
+                    finalColor = '#FFF';
+                } else if (!isHighlighted) {
+                    // Random glitch effect
+                    if (Math.random() > 0.995) {
+                        finalColor = '#00BFFF';
+                    } else if (Math.random() > 0.99) {
+                        finalColor = '#FFF';
+                    }
                 }
+                
+                ctx.fillStyle = finalColor;
+                ctx.fillText(text, posX, posY);
 
-                if (responseData.candidates && responseData.candidates.length > 0 &&
-                    responseData.candidates[0].content && responseData.candidates[0].content.parts &&
-                    responseData.candidates[0].content.parts.length > 0) {
-                    const generatedText = responseData.candidates[0].content.parts[0].text;
-                    displayText(generatedText);
-                } else {
-                    throw new Error("API did not return a valid response.");
+                if (rainDrops[i] * fontSize > height && Math.random() > 0.975) {
+                    rainDrops[i] = 0;
                 }
-
-            } catch (error) {
-                console.error("Synthesis failed:", error);
-                showError(error.message);
-            } finally {
-                setLoading(false);
+                rainDrops[i]++;
             }
-        }
 
-        function setLoading(isLoading) {
-            if (isLoading) {
-                synthButton.disabled = true;
-                synthButton.textContent = 'SYNTHESIZING...';
-                placeholder.classList.add('hidden');
-                resultText.classList.add('hidden');
-                loader.classList.remove('hidden');
-                errorMessage.classList.add('hidden');
-            } else {
-                synthButton.disabled = false;
-                synthButton.textContent = 'Synthesize';
-                loader.classList.add('hidden');
+            // Update and draw shockwaves
+            for (let i = shockwaves.length - 1; i >= 0; i--) {
+                const wave = shockwaves[i];
+                wave.radius += 5; // Speed of expansion
+                wave.life -= 0.02;
+                if (wave.life <= 0) {
+                    shockwaves.splice(i, 1);
+                }
             }
-        }
+            
+            requestAnimationFrame(draw);
+        };
 
-        function displayText(text) {
-            resultText.innerText = text;
-            resultText.classList.remove('hidden');
-            placeholder.classList.add('hidden');
-            loader.classList.add('hidden');
-        }
-        
-        function showError(message) {
-            errorMessage.textContent = `Error: ${message}`;
-            errorMessage.classList.remove('hidden');
-            placeholder.classList.remove('hidden');
-            resultText.classList.add('hidden');
-        }
+        draw();
+
     </script>
-
 </body>
 </html>
