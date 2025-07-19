@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Chimera - AI Image Synthesizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background-color: #0a0a0a;
+            color: #00ffcc;
+        }
+        .container {
+            border: 1px solid #00ffcc;
+            box-shadow: 0 0 20px #00ffcc, 0 0 30px #00ffcc inset;
+        }
+        .prompt-input {
+            background-color: rgba(0, 255, 204, 0.05);
+            border: 1px solid #00ffcc;
+            box-shadow: 0 0 10px #00ffcc inset;
+            color: #ffffff;
+            transition: all 0.3s ease;
+        }
+        .prompt-input:focus {
+            outline: none;
+            box-shadow: 0 0 15px #00ffcc;
+        }
+        .synth-button {
+            background-color: #00ffcc;
+            color: #0a0a0a;
+            border: none;
+            box-shadow: 0 0 15px #00ffcc;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .synth-button:hover {
+            background-color: #ffffff;
+            color: #0a0a0a;
+            box-shadow: 0 0 25px #ffffff;
+        }
+        .synth-button:disabled {
+            background-color: #333;
+            color: #777;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+        .image-container {
+            border: 1px solid #00ffcc;
+            box-shadow: 0 0 15px #00ffcc inset;
+            min-height: 512px;
+            background-color: rgba(0, 255, 204, 0.02);
+        }
+        .loader {
+            border: 8px solid rgba(0, 255, 204, 0.2);
+            border-top: 8px solid #00ffcc;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .placeholder-text {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div class="container w-full max-w-2xl p-6 md:p-8 rounded-lg bg-black bg-opacity-50 backdrop-blur-sm">
+        <header class="text-center mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold tracking-widest">PROJECT CHIMERA</h1>
+            <p class="text-sm text-gray-400 tracking-wider">AI Image Synthesizer by Koushiq Murad</p>
+        </header>
+
+        <main>
+            <div class="mb-6">
+                <input type="text" id="promptInput" class="prompt-input w-full p-4 rounded-md text-lg" placeholder="Describe your vision...">
+            </div>
+            <div class="mb-6">
+                <button id="synthButton" class="synth-button w-full py-4 rounded-md font-bold">
+                    Synthesize
+                </button>
+            </div>
+
+            <div id="imageContainer" class="image-container w-full aspect-square rounded-lg flex items-center justify-center overflow-hidden">
+                <div id="placeholder" class="text-center">
+                    <div class="text-6xl mb-4">🧬</div>
+                    <p class="placeholder-text text-gray-500">Your creation will materialize here</p>
+                </div>
+                <div id="loader" class="loader hidden"></div>
+                <img id="resultImage" src="" alt="Synthesized Image" class="w-full h-full object-contain hidden">
+            </div>
+             <p id="errorMessage" class="text-red-500 text-center mt-4 hidden"></p>
+        </main>
+    </div>
+
+    <script>
+        const promptInput = document.getElementById('promptInput');
+        const synthButton = document.getElementById('synthButton');
+        const imageContainer = document.getElementById('imageContainer');
+        const placeholder = document.getElementById('placeholder');
+        const loader = document.getElementById('loader');
+        const resultImage = document.getElementById('resultImage');
+        const errorMessage = document.getElementById('errorMessage');
+
+        synthButton.addEventListener('click', synthesizeImage);
+        promptInput.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                synthesizeImage();
+            }
+        });
+
+        async function synthesizeImage() {
+            const prompt = promptInput.value.trim();
+            if (!prompt) {
+                showError("Please enter a description for the image.");
+                return;
+            }
+
+            setLoading(true);
+            
+            try {
+                const payload = { 
+                    instances: [{ prompt: prompt }],
+                    parameters: { "sampleCount": 1 } 
+                };
+                const apiKey = ""; 
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const responseText = await response.text();
+
+                if (!response.ok) {
+                    let errorMsg = `HTTP error! Status: ${response.status}`;
+                    try {
+                        const errorData = JSON.parse(responseText);
+                        errorMsg = errorData.error?.message || JSON.stringify(errorData);
+                    } catch (e) {
+                        errorMsg = responseText.substring(0, 200) || errorMsg;
+                    }
+                    throw new Error(errorMsg);
+                }
+
+                if (!responseText) {
+                    throw new Error("API returned an empty response.");
+                }
+                
+                const result = JSON.parse(responseText);
+
+                if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
+                    const imageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+                    displayImage(imageUrl);
+                } else {
+                    throw new Error("API response did not contain a valid image. Details: " + JSON.stringify(result).substring(0, 200));
+                }
+
+            } catch (error) {
+                console.error("Synthesis failed:", error);
+                let displayMessage = error.message;
+                if (error instanceof TypeError) {
+                    displayMessage = "Network error or content security policy violation. Please try running this file from a live server.";
+                }
+                showError(displayMessage);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function setLoading(isLoading) {
+            if (isLoading) {
+                synthButton.disabled = true;
+                synthButton.textContent = 'SYNTHESIZING...';
+                placeholder.classList.add('hidden');
+                resultImage.classList.add('hidden');
+                loader.classList.remove('hidden');
+                errorMessage.classList.add('hidden');
+            } else {
+                synthButton.disabled = false;
+                synthButton.textContent = 'Synthesize';
+                loader.classList.add('hidden');
+            }
+        }
+
+        function displayImage(imageUrl) {
+            resultImage.src = imageUrl;
+            resultImage.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            loader.classList.add('hidden');
+        }
+        
+        function showError(message) {
+            errorMessage.textContent = `Error: ${message}`;
+            errorMessage.classList.remove('hidden');
+            placeholder.classList.remove('hidden');
+            resultImage.classList.add('hidden');
+        }
+    </script>
+
+</body>
+</html>
